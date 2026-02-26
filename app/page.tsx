@@ -8,41 +8,20 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Badge } from '@/components/ui/badge'
-// progress and tabs available if needed
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { Textarea } from '@/components/ui/textarea'
-// separator available if needed
-import { ScrollArea } from '@/components/ui/scroll-area'
 import { Skeleton } from '@/components/ui/skeleton'
-// dialog available if needed
 import { Switch } from '@/components/ui/switch'
-import { FiPlus, FiDollarSign, FiTrendingUp, FiTrendingDown, FiBarChart2, FiSend, FiTrash2, FiEdit2, FiCheck, FiAlertTriangle, FiTarget, FiCalendar, FiMessageSquare, FiGrid, FiStar, FiClock } from 'react-icons/fi'
+import {
+  FiPlus, FiDollarSign, FiTrendingUp, FiTrendingDown, FiBarChart2,
+  FiSend, FiTrash2, FiEdit2, FiCheck, FiAlertTriangle, FiTarget,
+  FiCalendar, FiMessageSquare, FiGrid, FiStar, FiClock
+} from 'react-icons/fi'
 
 // ─────────────────────────────── CONSTANTS ───────────────────────────────
 
 const EXPENSE_LOGGER_AGENT_ID = '699fd39d4151f92a8b61c6a0'
 const BUDGET_ANALYST_AGENT_ID = '699fd39de1d115fae61853ad'
-
-const THEME_VARS = {
-  '--background': '0 0% 99%',
-  '--foreground': '30 5% 15%',
-  '--card': '0 0% 100%',
-  '--card-foreground': '30 5% 15%',
-  '--primary': '40 30% 45%',
-  '--primary-foreground': '0 0% 100%',
-  '--secondary': '30 10% 95%',
-  '--secondary-foreground': '30 5% 15%',
-  '--accent': '40 40% 50%',
-  '--accent-foreground': '30 5% 15%',
-  '--muted': '30 8% 92%',
-  '--muted-foreground': '30 5% 50%',
-  '--destructive': '0 50% 45%',
-  '--destructive-foreground': '0 0% 100%',
-  '--border': '30 10% 88%',
-  '--ring': '40 30% 45%',
-  '--radius': '0rem',
-} as React.CSSProperties
-
 
 const DEFAULT_BUDGETS: CategoryBudget[] = [
   { category: 'Food', budget: 500 },
@@ -58,16 +37,14 @@ const DEFAULT_BUDGETS: CategoryBudget[] = [
 ]
 
 const CHART_COLORS = [
-  'hsl(40,30%,45%)',
-  'hsl(30,20%,35%)',
-  'hsl(200,15%,45%)',
-  'hsl(0,0%,60%)',
-  'hsl(30,10%,70%)',
-  'hsl(40,40%,50%)',
-  'hsl(20,25%,40%)',
-  'hsl(180,15%,50%)',
-  'hsl(0,0%,45%)',
-  'hsl(30,15%,55%)',
+  'hsl(40,30%,45%)', 'hsl(30,20%,35%)', 'hsl(200,15%,45%)',
+  'hsl(0,0%,60%)', 'hsl(30,10%,70%)', 'hsl(40,40%,50%)',
+  'hsl(20,25%,40%)', 'hsl(180,15%,50%)', 'hsl(0,0%,45%)', 'hsl(30,15%,55%)',
+]
+
+const CATEGORY_LIST = [
+  'Food', 'Transport', 'Shopping', 'Bills', 'Entertainment',
+  'Health', 'Education', 'Travel', 'Subscriptions', 'Other',
 ]
 
 const SAMPLE_EXPENSES: Expense[] = [
@@ -160,7 +137,7 @@ function getTodayDate(): string {
 function formatMonthLabel(monthStr: string): string {
   const [year, month] = monthStr.split('-')
   const monthNames = ['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December']
-  const monthIndex = parseInt(month, 10) - 1
+  const monthIndex = parseInt(month ?? '0', 10) - 1
   return `${monthNames[monthIndex] ?? 'Unknown'} ${year}`
 }
 
@@ -175,16 +152,11 @@ function getMonthOptions(): Array<{ value: string; label: string }> {
   return options
 }
 
-function getCategoryColor(index: number): string {
-  return CHART_COLORS[index % CHART_COLORS.length] ?? 'hsl(0,0%,60%)'
-}
-
 function getUtilizationColor(percent: number): string {
   if (percent < 70) return 'hsl(140, 40%, 45%)'
   if (percent < 90) return 'hsl(40, 60%, 50%)'
   return 'hsl(0, 50%, 45%)'
 }
-
 
 function getSeverityVariant(severity: string): 'default' | 'secondary' | 'destructive' | 'outline' {
   const s = (severity ?? '').toLowerCase()
@@ -205,7 +177,7 @@ function loadFromStorage<T>(key: string, fallback: T): T {
   try {
     const item = localStorage.getItem(key)
     if (item) return JSON.parse(item) as T
-  } catch {}
+  } catch { /* ignore */ }
   return fallback
 }
 
@@ -213,46 +185,54 @@ function saveToStorage(key: string, value: unknown): void {
   if (typeof window === 'undefined') return
   try {
     localStorage.setItem(key, JSON.stringify(value))
-  } catch {}
+  } catch { /* ignore */ }
 }
 
 function parseAgentResult(result: AIAgentResponse): Record<string, unknown> | null {
-  let parsed = result?.response?.result
-  if (typeof parsed === 'string') {
-    try { parsed = JSON.parse(parsed) } catch { return null }
-  }
-  if (!parsed && result?.raw_response) {
-    try { parsed = JSON.parse(result.raw_response) } catch { return null }
-  }
-  if (parsed && typeof parsed === 'object') return parsed as Record<string, unknown>
+  try {
+    let parsed = result?.response?.result
+    if (typeof parsed === 'string') {
+      try { parsed = JSON.parse(parsed) } catch { /* ignore */ }
+    }
+    if (!parsed && result?.raw_response) {
+      try {
+        const raw = typeof result.raw_response === 'string' ? JSON.parse(result.raw_response) : result.raw_response
+        if (raw?.result) parsed = raw.result
+        else parsed = raw
+      } catch { /* ignore */ }
+    }
+    if (parsed && typeof parsed === 'object' && !Array.isArray(parsed)) {
+      return parsed as Record<string, unknown>
+    }
+  } catch { /* ignore */ }
   return null
 }
 
-// ─────────────────────────────── MARKDOWN ───────────────────────────────
+// ─────────────────────────────── MARKDOWN RENDERER ───────────────────────────────
 
 function formatInline(text: string): React.ReactNode {
   const parts = text.split(/\*\*(.*?)\*\*/g)
   if (parts.length === 1) return text
   return parts.map((part, i) =>
     i % 2 === 1 ? (
-      <strong key={i} className="font-semibold">{part}</strong>
+      <strong key={i} className="font-medium">{part}</strong>
     ) : (
       <React.Fragment key={i}>{part}</React.Fragment>
     )
   )
 }
 
-function renderMarkdown(text: string): React.ReactNode {
+function RenderMarkdown({ text }: { text: string }) {
   if (!text) return null
   return (
     <div className="space-y-2">
       {text.split('\n').map((line, i) => {
         if (line.startsWith('### '))
-          return <h4 key={i} className="font-serif font-semibold text-sm mt-3 mb-1">{line.slice(4)}</h4>
+          return <h4 key={i} className="font-serif font-medium text-sm mt-3 mb-1">{line.slice(4)}</h4>
         if (line.startsWith('## '))
-          return <h3 key={i} className="font-serif font-semibold text-base mt-3 mb-1">{line.slice(3)}</h3>
+          return <h3 key={i} className="font-serif font-medium text-base mt-3 mb-1">{line.slice(3)}</h3>
         if (line.startsWith('# '))
-          return <h2 key={i} className="font-serif font-bold text-lg mt-4 mb-2">{line.slice(2)}</h2>
+          return <h2 key={i} className="font-serif font-medium text-lg mt-4 mb-2">{line.slice(2)}</h2>
         if (line.startsWith('- ') || line.startsWith('* '))
           return <li key={i} className="ml-4 list-disc text-sm leading-relaxed">{formatInline(line.slice(2))}</li>
         if (/^\d+\.\s/.test(line))
@@ -280,13 +260,14 @@ class ErrorBoundary extends React.Component<
   render() {
     if (this.state.hasError) {
       return (
-        <div className="min-h-screen flex items-center justify-center bg-background text-foreground">
+        <div className="min-h-screen flex items-center justify-center" style={{ background: 'hsl(0,0%,99%)', color: 'hsl(30,5%,15%)' }}>
           <div className="text-center p-8 max-w-md">
-            <h2 className="text-xl font-serif font-semibold mb-2">Something went wrong</h2>
-            <p className="text-muted-foreground mb-4 text-sm">{this.state.error}</p>
+            <FiAlertTriangle size={32} className="mx-auto mb-4" style={{ color: 'hsl(0,50%,45%)' }} />
+            <h2 className="text-xl font-serif font-light mb-2">Something went wrong</h2>
+            <p className="text-sm font-sans mb-4" style={{ color: 'hsl(30,5%,50%)' }}>{this.state.error}</p>
             <button
               onClick={() => this.setState({ hasError: false, error: '' })}
-              className="px-4 py-2 text-sm font-sans tracking-wider"
+              className="px-6 py-2 text-sm font-sans tracking-wider"
               style={{ background: 'hsl(40,30%,45%)', color: 'white' }}
             >
               Try again
@@ -299,9 +280,10 @@ class ErrorBoundary extends React.Component<
   }
 }
 
-// ─────────────────────────────── COMPONENTS ───────────────────────────────
+// ─────────────────────────────── EXTRACTED COMPONENTS ───────────────────────────────
+// These are defined OUTSIDE Page so they don't re-mount on state changes
 
-function StatCard({ icon, label, value, trend, trendUp }: {
+const StatCard = React.memo(function StatCard({ icon, label, value, trend, trendUp }: {
   icon: React.ReactNode
   label: string
   value: string
@@ -327,9 +309,9 @@ function StatCard({ icon, label, value, trend, trendUp }: {
       </CardContent>
     </Card>
   )
-}
+})
 
-function ExpenseRow({ expense, onDelete }: { expense: Expense; onDelete?: (id: string) => void }) {
+const ExpenseRow = React.memo(function ExpenseRow({ expense, onDelete }: { expense: Expense; onDelete?: (id: string) => void }) {
   return (
     <div className="flex items-center justify-between py-3 border-b" style={{ borderColor: 'hsl(30,10%,93%)' }}>
       <div className="flex-1 min-w-0">
@@ -353,20 +335,22 @@ function ExpenseRow({ expense, onDelete }: { expense: Expense; onDelete?: (id: s
         </div>
       </div>
       {onDelete && (
-        <Button variant="ghost" size="sm" onClick={() => onDelete(expense.id)} className="rounded-none ml-2 h-8 w-8 p-0" style={{ color: 'hsl(0,50%,45%)' }}>
+        <button
+          onClick={() => onDelete(expense.id)}
+          className="ml-2 p-1.5 transition-colors hover:opacity-70"
+          style={{ color: 'hsl(0,50%,45%)' }}
+        >
           <FiTrash2 size={14} />
-        </Button>
+        </button>
       )}
     </div>
   )
-}
+})
 
-function CategoryBar({ category, spent, budget, color, index }: {
+const CategoryBar = React.memo(function CategoryBar({ category, spent, budget }: {
   category: string
   spent: number
   budget: number
-  color: string
-  index: number
 }) {
   const percent = budget > 0 ? Math.min((spent / budget) * 100, 100) : 0
   const overPercent = budget > 0 ? (spent / budget) * 100 : 0
@@ -381,52 +365,17 @@ function CategoryBar({ category, spent, budget, color, index }: {
       <div className="h-2 w-full" style={{ background: 'hsl(30,8%,92%)' }}>
         <div
           className="h-full transition-all duration-500"
-          style={{
-            width: `${percent}%`,
-            background: getUtilizationColor(overPercent),
-          }}
+          style={{ width: `${percent}%`, background: getUtilizationColor(overPercent) }}
         />
       </div>
     </div>
   )
-}
-
-function AgentStatusPanel({ activeAgentId }: { activeAgentId: string | null }) {
-  const agents = [
-    { id: EXPENSE_LOGGER_AGENT_ID, name: 'Expense Logger', purpose: 'Parses natural language expense entries' },
-    { id: BUDGET_ANALYST_AGENT_ID, name: 'Budget Analyst', purpose: 'Analyzes spending and gives recommendations' },
-  ]
-  return (
-    <Card className="rounded-none border" style={{ borderColor: 'hsl(30,10%,88%)' }}>
-      <CardHeader className="py-3 px-4">
-        <CardTitle className="text-xs font-sans tracking-wider uppercase" style={{ color: 'hsl(30,5%,50%)' }}>AI Agents</CardTitle>
-      </CardHeader>
-      <CardContent className="px-4 pb-3 space-y-2">
-        {agents.map((agent) => (
-          <div key={agent.id} className="flex items-center gap-2">
-            <div
-              className="w-2 h-2 flex-shrink-0"
-              style={{
-                borderRadius: '50%',
-                background: activeAgentId === agent.id ? 'hsl(140,50%,45%)' : 'hsl(30,8%,80%)',
-                boxShadow: activeAgentId === agent.id ? '0 0 6px hsl(140,50%,45%)' : 'none',
-              }}
-            />
-            <div className="min-w-0">
-              <p className="text-xs font-sans font-medium" style={{ color: 'hsl(30,5%,15%)' }}>{agent.name}</p>
-              <p className="text-xs font-sans truncate" style={{ color: 'hsl(30,5%,60%)' }}>{agent.purpose}</p>
-            </div>
-          </div>
-        ))}
-      </CardContent>
-    </Card>
-  )
-}
+})
 
 // ─────────────────────────────── MAIN PAGE ───────────────────────────────
 
 export default function Page() {
-  // ── State ──
+  // ── Core state ──
   const [activeTab, setActiveTab] = useState<'dashboard' | 'log' | 'budgets' | 'reports'>('dashboard')
   const [selectedMonth, setSelectedMonth] = useState<string>('')
   const [expenses, setExpenses] = useState<Expense[]>([])
@@ -441,7 +390,10 @@ export default function Page() {
   const [chatMessages, setChatMessages] = useState<ChatMessage[]>([])
   const [chatLoading, setChatLoading] = useState(false)
   const [pendingExpense, setPendingExpense] = useState<ParsedExpense | null>(null)
-  const [quickForm, setQuickForm] = useState({ amount: '', category: 'Food', date: '', notes: '' })
+  const [quickAmount, setQuickAmount] = useState('')
+  const [quickCategory, setQuickCategory] = useState('Food')
+  const [quickDate, setQuickDate] = useState('')
+  const [quickNotes, setQuickNotes] = useState('')
   const [saveStatus, setSaveStatus] = useState<{ type: 'success' | 'error'; message: string } | null>(null)
   const chatScrollRef = useRef<HTMLDivElement>(null)
 
@@ -459,7 +411,7 @@ export default function Page() {
   useEffect(() => {
     setMounted(true)
     setSelectedMonth(getCurrentMonth())
-    setQuickForm((prev) => ({ ...prev, date: getTodayDate() }))
+    setQuickDate(getTodayDate())
     const storedExpenses = loadFromStorage<Expense[]>('budgetwise_expenses', [])
     const storedBudgets = loadFromStorage<CategoryBudget[]>('budgetwise_budgets', DEFAULT_BUDGETS)
     setExpenses(storedExpenses)
@@ -473,21 +425,13 @@ export default function Page() {
     return source.filter((e) => e.date.startsWith(selectedMonth))
   }, [expenses, sampleData, selectedMonth])
 
-  const totalSpent = useMemo(() => {
-    return displayExpenses.reduce((sum, e) => sum + e.amount, 0)
-  }, [displayExpenses])
-
-  const totalBudget = useMemo(() => {
-    return budgets.reduce((sum, b) => sum + b.budget, 0)
-  }, [budgets])
-
+  const totalSpent = useMemo(() => displayExpenses.reduce((sum, e) => sum + e.amount, 0), [displayExpenses])
+  const totalBudget = useMemo(() => budgets.reduce((sum, b) => sum + b.budget, 0), [budgets])
   const remaining = totalBudget - totalSpent
 
   const categorySpending = useMemo(() => {
     const map: Record<string, number> = {}
-    displayExpenses.forEach((e) => {
-      map[e.category] = (map[e.category] ?? 0) + e.amount
-    })
+    displayExpenses.forEach((e) => { map[e.category] = (map[e.category] ?? 0) + e.amount })
     return map
   }, [displayExpenses])
 
@@ -495,32 +439,24 @@ export default function Page() {
     let maxCat = ''
     let maxAmt = 0
     Object.entries(categorySpending).forEach(([cat, amt]) => {
-      if (amt > maxAmt) {
-        maxCat = cat
-        maxAmt = amt
-      }
+      if (amt > maxAmt) { maxCat = cat; maxAmt = amt }
     })
     return { category: maxCat || 'N/A', amount: maxAmt }
   }, [categorySpending])
 
-  const sortedExpenses = useMemo(() => {
-    return [...displayExpenses].sort((a, b) => b.date.localeCompare(a.date))
-  }, [displayExpenses])
+  const sortedExpenses = useMemo(() => [...displayExpenses].sort((a, b) => b.date.localeCompare(a.date)), [displayExpenses])
+  const monthOptions = useMemo(() => getMonthOptions(), [])
 
   // ── Expense helpers ──
   const addExpense = useCallback((expense: Omit<Expense, 'id' | 'createdAt'>) => {
-    const newExp: Expense = {
-      ...expense,
-      id: generateId(),
-      createdAt: new Date().toISOString(),
-    }
+    const newExp: Expense = { ...expense, id: generateId(), createdAt: new Date().toISOString() }
     setExpenses((prev) => {
       const updated = [...prev, newExp]
       saveToStorage('budgetwise_expenses', updated)
       return updated
     })
     setSaveStatus({ type: 'success', message: `Expense of ${expense.currency}${expense.amount.toFixed(2)} saved to ${expense.category}` })
-    setTimeout(() => setSaveStatus(null), 3000)
+    setTimeout(() => setSaveStatus(null), 4000)
   }, [])
 
   const deleteExpense = useCallback((id: string) => {
@@ -533,20 +469,16 @@ export default function Page() {
 
   // ── Chat handler ──
   const handleChatSend = useCallback(async () => {
-    if (!chatInput.trim() || chatLoading) return
-    const userMsg: ChatMessage = {
-      id: generateId(),
-      role: 'user',
-      content: chatInput.trim(),
-      timestamp: new Date().toISOString(),
-    }
+    const trimmed = chatInput.trim()
+    if (!trimmed || chatLoading) return
+    const userMsg: ChatMessage = { id: generateId(), role: 'user', content: trimmed, timestamp: new Date().toISOString() }
     setChatMessages((prev) => [...prev, userMsg])
     setChatInput('')
     setChatLoading(true)
     setActiveAgentId(EXPENSE_LOGGER_AGENT_ID)
 
     try {
-      const result = await callAIAgent(userMsg.content, EXPENSE_LOGGER_AGENT_ID)
+      const result = await callAIAgent(trimmed, EXPENSE_LOGGER_AGENT_ID)
       let parsed: ParsedExpense | null = null
 
       if (result.success) {
@@ -574,14 +506,12 @@ export default function Page() {
         timestamp: new Date().toISOString(),
       }
       setChatMessages((prev) => [...prev, assistantMsg])
-    } catch (err) {
-      const errMsg: ChatMessage = {
-        id: generateId(),
-        role: 'assistant',
+    } catch {
+      setChatMessages((prev) => [...prev, {
+        id: generateId(), role: 'assistant',
         content: 'Something went wrong while processing your expense. Please try again.',
         timestamp: new Date().toISOString(),
-      }
-      setChatMessages((prev) => [...prev, errMsg])
+      }])
     } finally {
       setChatLoading(false)
       setActiveAgentId(null)
@@ -590,21 +520,24 @@ export default function Page() {
 
   // ── Quick add handler ──
   const handleQuickAdd = useCallback(() => {
-    const amount = parseFloat(quickForm.amount)
+    const amount = parseFloat(quickAmount)
     if (isNaN(amount) || amount <= 0) {
-      setSaveStatus({ type: 'error', message: 'Please enter a valid amount' })
+      setSaveStatus({ type: 'error', message: 'Please enter a valid amount greater than 0' })
       setTimeout(() => setSaveStatus(null), 3000)
       return
     }
     addExpense({
       amount,
       currency: '$',
-      category: quickForm.category,
-      date: quickForm.date || getTodayDate(),
-      notes: quickForm.notes,
+      category: quickCategory,
+      date: quickDate || getTodayDate(),
+      notes: quickNotes,
     })
-    setQuickForm({ amount: '', category: 'Food', date: getTodayDate(), notes: '' })
-  }, [quickForm, addExpense])
+    setQuickAmount('')
+    setQuickCategory('Food')
+    setQuickDate(getTodayDate())
+    setQuickNotes('')
+  }, [quickAmount, quickCategory, quickDate, quickNotes, addExpense])
 
   // ── Save pending expense from chat ──
   const savePendingExpense = useCallback(() => {
@@ -620,6 +553,10 @@ export default function Page() {
   }, [pendingExpense, addExpense])
 
   // ── Budget handlers ──
+  const handleBudgetEditChange = useCallback((category: string, value: string) => {
+    setBudgetEdits((prev) => ({ ...prev, [category]: value }))
+  }, [])
+
   const saveBudgets = useCallback(() => {
     const updated = budgets.map((b) => {
       const editVal = budgetEdits[b.category]
@@ -663,7 +600,9 @@ export default function Page() {
     setAnalysisError(null)
     setActiveAgentId(BUDGET_ANALYST_AGENT_ID)
 
-    const expList = displayExpenses.map((e) => `- ${e.category}: ${e.currency}${e.amount.toFixed(2)} on ${e.date} (${e.notes || 'no notes'})`).join('\n')
+    const expList = displayExpenses
+      .map((e) => `- ${e.category}: ${e.currency}${e.amount.toFixed(2)} on ${e.date} (${e.notes || 'no notes'})`)
+      .join('\n')
     const budList = budgets.map((b) => `- ${b.category}: $${b.budget}`).join('\n')
 
     const contextMessage = `Analyze my spending for ${formatMonthLabel(selectedMonth || getCurrentMonth())}.
@@ -712,14 +651,12 @@ Please analyze my spending, identify overspending areas, and give me recommendat
     if (chatScrollRef.current) {
       chatScrollRef.current.scrollTop = chatScrollRef.current.scrollHeight
     }
-  }, [chatMessages])
+  }, [chatMessages, chatLoading])
 
-  // ── Month options ──
-  const monthOptions = useMemo(() => getMonthOptions(), [])
-
+  // ── Loading state ──
   if (!mounted) {
     return (
-      <div className="min-h-screen flex items-center justify-center" style={{ ...THEME_VARS, background: 'hsl(0,0%,99%)' }}>
+      <div className="min-h-screen flex items-center justify-center" style={{ background: 'hsl(0,0%,99%)' }}>
         <div className="space-y-4 w-64">
           <Skeleton className="h-8 w-48 rounded-none" />
           <Skeleton className="h-4 w-full rounded-none" />
@@ -729,783 +666,761 @@ Please analyze my spending, identify overspending areas, and give me recommendat
     )
   }
 
-  // ─────────────────── TAB: DASHBOARD ───────────────────
+  // ─────────────────── RENDER ───────────────────
 
-  function DashboardTab() {
-    return (
-      <div className="space-y-6 pb-4">
-        {/* Month Selector */}
-        <div className="flex items-center justify-between">
-          <h2 className="font-serif text-xl font-light tracking-wider" style={{ color: 'hsl(30,5%,15%)' }}>
-            {formatMonthLabel(selectedMonth || getCurrentMonth())}
-          </h2>
-          <Select value={selectedMonth} onValueChange={setSelectedMonth}>
-            <SelectTrigger className="w-[180px] rounded-none border font-sans text-xs tracking-wider" style={{ borderColor: 'hsl(30,10%,88%)' }}>
-              <SelectValue placeholder="Select month" />
-            </SelectTrigger>
-            <SelectContent className="rounded-none">
-              {monthOptions.map((opt) => (
-                <SelectItem key={opt.value} value={opt.value} className="rounded-none font-sans text-xs">{opt.label}</SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
-        </div>
-
-        {/* Stat Cards */}
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-          <StatCard
-            icon={<FiDollarSign size={20} />}
-            label="Total Spent"
-            value={`$${totalSpent.toFixed(2)}`}
-            trend={totalBudget > 0 ? `${((totalSpent / totalBudget) * 100).toFixed(0)}% of budget` : undefined}
-            trendUp={false}
-          />
-          <StatCard
-            icon={remaining >= 0 ? <FiTrendingUp size={20} /> : <FiTrendingDown size={20} />}
-            label="Remaining"
-            value={`$${Math.abs(remaining).toFixed(2)}`}
-            trend={remaining < 0 ? 'Over budget' : 'Under budget'}
-            trendUp={remaining >= 0}
-          />
-          <StatCard
-            icon={<FiStar size={20} />}
-            label="Top Category"
-            value={topCategory.category}
-            trend={topCategory.amount > 0 ? `$${topCategory.amount.toFixed(2)}` : undefined}
-            trendUp={false}
-          />
-        </div>
-
-        {/* Category Distribution */}
-        {displayExpenses.length > 0 && (
-          <Card className="rounded-none border" style={{ borderColor: 'hsl(30,10%,88%)' }}>
-            <CardHeader className="pb-2">
-              <CardTitle className="font-serif text-sm font-light tracking-wider uppercase" style={{ color: 'hsl(30,5%,50%)' }}>
-                Category Distribution
-              </CardTitle>
-            </CardHeader>
-            <CardContent className="space-y-3">
-              {budgets.map((b, idx) => {
-                const spent = categorySpending[b.category] ?? 0
-                if (spent === 0 && !sampleData) return null
-                return (
-                  <CategoryBar
-                    key={b.category}
-                    category={b.category}
-                    spent={spent}
-                    budget={b.budget}
-                    color={getCategoryColor(idx)}
-                    index={idx}
-                  />
-                )
-              })}
-            </CardContent>
-          </Card>
-        )}
-
-        {/* Recent Expenses */}
-        <Card className="rounded-none border" style={{ borderColor: 'hsl(30,10%,88%)' }}>
-          <CardHeader className="pb-2">
-            <div className="flex items-center justify-between">
-              <CardTitle className="font-serif text-sm font-light tracking-wider uppercase" style={{ color: 'hsl(30,5%,50%)' }}>
-                Recent Expenses
-              </CardTitle>
-              <Badge variant="outline" className="rounded-none font-sans text-xs" style={{ borderColor: 'hsl(40,30%,45%)', color: 'hsl(40,30%,45%)' }}>
-                {displayExpenses.length}
-              </Badge>
+  return (
+    <ErrorBoundary>
+      <div className="min-h-screen font-sans" style={{ background: 'hsl(0,0%,99%)', color: 'hsl(30,5%,15%)' }}>
+        {/* Header */}
+        <header className="sticky top-0 z-30 border-b px-4 py-4" style={{ borderColor: 'hsl(30,10%,88%)', background: 'white' }}>
+          <div className="max-w-lg mx-auto flex items-center justify-between">
+            <div>
+              <h1 className="font-serif text-lg font-light tracking-wider" style={{ color: 'hsl(30,5%,15%)' }}>
+                BudgetWise
+              </h1>
+              <p className="text-xs font-sans tracking-wider" style={{ color: 'hsl(30,5%,55%)' }}>
+                Monthly Budget Tracker
+              </p>
             </div>
-          </CardHeader>
-          <CardContent>
-            {sortedExpenses.length === 0 ? (
-              <div className="py-8 text-center">
-                <FiPlus size={24} className="mx-auto mb-3" style={{ color: 'hsl(30,8%,80%)' }} />
-                <p className="text-sm font-sans" style={{ color: 'hsl(30,5%,50%)' }}>No expenses logged yet.</p>
-                <p className="text-xs font-sans mt-1" style={{ color: 'hsl(30,5%,65%)' }}>Start by adding your first expense.</p>
-                <Button
-                  variant="outline"
-                  className="mt-4 rounded-none font-sans text-xs tracking-wider"
-                  style={{ borderColor: 'hsl(40,30%,45%)', color: 'hsl(40,30%,45%)' }}
-                  onClick={() => setActiveTab('log')}
-                >
-                  <FiPlus size={14} className="mr-2" /> Add Expense
-                </Button>
-              </div>
-            ) : (
-              <ScrollArea className="max-h-[280px]">
-                {sortedExpenses.slice(0, 10).map((exp) => (
-                  <ExpenseRow key={exp.id} expense={exp} onDelete={deleteExpense} />
-                ))}
-                {sortedExpenses.length > 10 && (
-                  <p className="text-xs font-sans text-center py-2" style={{ color: 'hsl(30,5%,50%)' }}>
-                    +{sortedExpenses.length - 10} more expenses
-                  </p>
-                )}
-              </ScrollArea>
-            )}
-          </CardContent>
-        </Card>
-
-        {/* Analyze CTA */}
-        {displayExpenses.length > 0 && (
-          <Button
-            className="w-full rounded-none font-sans text-xs tracking-wider py-6"
-            style={{ background: 'hsl(40,30%,45%)', color: 'white' }}
-            onClick={() => {
-              setActiveTab('reports')
-              runAnalysis()
-            }}
-          >
-            <FiBarChart2 size={16} className="mr-2" /> Analyze Spending
-          </Button>
-        )}
-
-        {/* Agent Status */}
-        <AgentStatusPanel activeAgentId={activeAgentId} />
-      </div>
-    )
-  }
-
-  // ─────────────────── TAB: LOG EXPENSE ───────────────────
-
-  function LogExpenseTab() {
-    return (
-      <div className="space-y-4 pb-4">
-        <h2 className="font-serif text-xl font-light tracking-wider" style={{ color: 'hsl(30,5%,15%)' }}>
-          Log Expense
-        </h2>
-
-        {/* Mode Toggle */}
-        <div className="flex border" style={{ borderColor: 'hsl(30,10%,88%)' }}>
-          <button
-            className="flex-1 py-2.5 text-xs font-sans tracking-wider transition-colors"
-            style={{
-              background: logMode === 'chat' ? 'hsl(40,30%,45%)' : 'transparent',
-              color: logMode === 'chat' ? 'white' : 'hsl(30,5%,50%)',
-            }}
-            onClick={() => setLogMode('chat')}
-          >
-            <FiMessageSquare size={14} className="inline mr-2" />Chat Mode
-          </button>
-          <button
-            className="flex-1 py-2.5 text-xs font-sans tracking-wider transition-colors"
-            style={{
-              background: logMode === 'quick' ? 'hsl(40,30%,45%)' : 'transparent',
-              color: logMode === 'quick' ? 'white' : 'hsl(30,5%,50%)',
-            }}
-            onClick={() => setLogMode('quick')}
-          >
-            <FiEdit2 size={14} className="inline mr-2" />Quick Add
-          </button>
-        </div>
-
-        {/* Status Message */}
-        {saveStatus && (
-          <div
-            className="flex items-center gap-2 p-3 text-xs font-sans border"
-            style={{
-              borderColor: saveStatus.type === 'success' ? 'hsl(140,40%,45%)' : 'hsl(0,50%,45%)',
-              background: saveStatus.type === 'success' ? 'hsl(140,40%,95%)' : 'hsl(0,50%,95%)',
-              color: saveStatus.type === 'success' ? 'hsl(140,40%,30%)' : 'hsl(0,50%,35%)',
-            }}
-          >
-            {saveStatus.type === 'success' ? <FiCheck size={14} /> : <FiAlertTriangle size={14} />}
-            {saveStatus.message}
+            <div className="flex items-center gap-2">
+              <Label className="text-xs font-sans" style={{ color: 'hsl(30,5%,55%)' }}>Demo</Label>
+              <Switch checked={sampleData} onCheckedChange={setSampleData} />
+            </div>
           </div>
-        )}
+        </header>
 
-        {logMode === 'chat' ? (
-          <Card className="rounded-none border" style={{ borderColor: 'hsl(30,10%,88%)' }}>
-            <CardContent className="p-0">
-              {/* Chat Messages */}
-              <div ref={chatScrollRef} className="h-[340px] overflow-y-auto p-4 space-y-3" style={{ background: 'hsl(30,10%,97%)' }}>
-                {chatMessages.length === 0 && !chatLoading && (
-                  <div className="flex flex-col items-center justify-center h-full text-center">
-                    <FiMessageSquare size={28} style={{ color: 'hsl(30,8%,80%)' }} />
-                    <p className="text-sm font-sans mt-3" style={{ color: 'hsl(30,5%,50%)' }}>
-                      Describe your expense in natural language
-                    </p>
-                    <p className="text-xs font-sans mt-1" style={{ color: 'hsl(30,5%,65%)' }}>
-                      e.g., "Spent $45 on groceries yesterday"
-                    </p>
-                  </div>
-                )}
-                {chatMessages.map((msg) => (
-                  <div key={msg.id} className={`flex ${msg.role === 'user' ? 'justify-end' : 'justify-start'}`}>
-                    <div
-                      className="max-w-[80%] p-3 text-sm font-sans leading-relaxed"
-                      style={{
-                        background: msg.role === 'user' ? 'hsl(40,30%,45%)' : 'white',
-                        color: msg.role === 'user' ? 'white' : 'hsl(30,5%,15%)',
-                        border: msg.role === 'assistant' ? '1px solid hsl(30,10%,88%)' : 'none',
-                      }}
-                    >
-                      {msg.content}
-                    </div>
-                  </div>
-                ))}
-                {chatLoading && (
-                  <div className="flex justify-start">
-                    <div className="p-3 space-y-2" style={{ background: 'white', border: '1px solid hsl(30,10%,88%)' }}>
-                      <Skeleton className="h-3 w-32 rounded-none" />
-                      <Skeleton className="h-3 w-24 rounded-none" />
-                    </div>
-                  </div>
-                )}
-              </div>
+        {/* Content */}
+        <main className="max-w-lg mx-auto px-4 pt-5 pb-24">
 
-              {/* Pending Expense Confirmation */}
-              {pendingExpense && (
-                <div className="p-4 border-t" style={{ borderColor: 'hsl(30,10%,88%)', background: 'hsl(40,30%,97%)' }}>
-                  <div className="flex items-center justify-between mb-2">
-                    <span className="text-xs font-sans tracking-wider uppercase" style={{ color: 'hsl(40,30%,45%)' }}>
-                      Parsed Expense
-                    </span>
-                    <Badge
-                      variant={pendingExpense.confidence === 'high' ? 'default' : pendingExpense.confidence === 'medium' ? 'secondary' : 'outline'}
-                      className="rounded-none text-xs font-sans"
-                    >
-                      {pendingExpense.confidence} confidence
-                    </Badge>
-                  </div>
-                  <div className="grid grid-cols-2 gap-2 text-xs font-sans mb-3">
-                    <div><span style={{ color: 'hsl(30,5%,50%)' }}>Amount:</span> <strong>{pendingExpense.currency}{pendingExpense.amount.toFixed(2)}</strong></div>
-                    <div><span style={{ color: 'hsl(30,5%,50%)' }}>Category:</span> <strong>{pendingExpense.category}</strong></div>
-                    <div><span style={{ color: 'hsl(30,5%,50%)' }}>Date:</span> <strong>{pendingExpense.date}</strong></div>
-                    <div><span style={{ color: 'hsl(30,5%,50%)' }}>Notes:</span> <strong>{pendingExpense.notes || 'None'}</strong></div>
-                  </div>
-                  <div className="flex gap-2">
-                    <Button
-                      className="flex-1 rounded-none font-sans text-xs tracking-wider"
-                      style={{ background: 'hsl(40,30%,45%)', color: 'white' }}
-                      onClick={savePendingExpense}
-                    >
-                      <FiCheck size={14} className="mr-1" /> Save Expense
-                    </Button>
-                    <Button
-                      variant="outline"
-                      className="rounded-none font-sans text-xs tracking-wider"
-                      style={{ borderColor: 'hsl(30,10%,88%)' }}
-                      onClick={() => setPendingExpense(null)}
-                    >
-                      Dismiss
-                    </Button>
-                  </div>
-                </div>
-              )}
-
-              {/* Chat Input */}
-              <div className="p-3 border-t flex gap-2" style={{ borderColor: 'hsl(30,10%,88%)' }}>
-                <Input
-                  className="rounded-none flex-1 font-sans text-sm"
-                  style={{ borderColor: 'hsl(30,10%,88%)' }}
-                  placeholder="Describe your expense..."
-                  value={chatInput}
-                  onChange={(e) => setChatInput(e.target.value)}
-                  onKeyDown={(e) => {
-                    if (e.key === 'Enter' && !e.shiftKey) {
-                      e.preventDefault()
-                      handleChatSend()
-                    }
-                  }}
-                  disabled={chatLoading}
-                />
-                <Button
-                  className="rounded-none"
-                  style={{ background: 'hsl(40,30%,45%)', color: 'white' }}
-                  onClick={handleChatSend}
-                  disabled={chatLoading || !chatInput.trim()}
-                >
-                  <FiSend size={16} />
-                </Button>
-              </div>
-            </CardContent>
-          </Card>
-        ) : (
-          <Card className="rounded-none border" style={{ borderColor: 'hsl(30,10%,88%)' }}>
-            <CardContent className="p-5 space-y-4">
-              <div>
-                <Label className="text-xs font-sans tracking-wider uppercase" style={{ color: 'hsl(30,5%,50%)' }}>Amount</Label>
-                <div className="flex items-center mt-1">
-                  <span className="px-3 py-2 text-sm font-sans border border-r-0" style={{ borderColor: 'hsl(30,10%,88%)', background: 'hsl(30,10%,95%)', color: 'hsl(30,5%,50%)' }}>$</span>
-                  <Input
-                    type="number"
-                    className="rounded-none font-sans"
-                    style={{ borderColor: 'hsl(30,10%,88%)' }}
-                    placeholder="0.00"
-                    min="0"
-                    step="0.01"
-                    value={quickForm.amount}
-                    onChange={(e) => setQuickForm((prev) => ({ ...prev, amount: e.target.value }))}
-                  />
-                </div>
-              </div>
-
-              <div>
-                <Label className="text-xs font-sans tracking-wider uppercase" style={{ color: 'hsl(30,5%,50%)' }}>Category</Label>
-                <Select value={quickForm.category} onValueChange={(val) => setQuickForm((prev) => ({ ...prev, category: val }))}>
-                  <SelectTrigger className="rounded-none mt-1 font-sans text-sm" style={{ borderColor: 'hsl(30,10%,88%)' }}>
-                    <SelectValue />
+          {/* ═══════════════════ DASHBOARD TAB ═══════════════════ */}
+          {activeTab === 'dashboard' && (
+            <div className="space-y-6 pb-4">
+              {/* Month Selector */}
+              <div className="flex items-center justify-between">
+                <h2 className="font-serif text-xl font-light tracking-wider" style={{ color: 'hsl(30,5%,15%)' }}>
+                  {formatMonthLabel(selectedMonth || getCurrentMonth())}
+                </h2>
+                <Select value={selectedMonth} onValueChange={setSelectedMonth}>
+                  <SelectTrigger className="w-[180px] rounded-none border font-sans text-xs tracking-wider" style={{ borderColor: 'hsl(30,10%,88%)' }}>
+                    <SelectValue placeholder="Select month" />
                   </SelectTrigger>
                   <SelectContent className="rounded-none">
-                    {budgets.map((b) => (
-                      <SelectItem key={b.category} value={b.category} className="rounded-none font-sans text-sm">{b.category}</SelectItem>
+                    {monthOptions.map((opt) => (
+                      <SelectItem key={opt.value} value={opt.value} className="rounded-none font-sans text-xs">{opt.label}</SelectItem>
                     ))}
                   </SelectContent>
                 </Select>
               </div>
 
-              <div>
-                <Label className="text-xs font-sans tracking-wider uppercase" style={{ color: 'hsl(30,5%,50%)' }}>Date</Label>
-                <Input
-                  type="date"
-                  className="rounded-none mt-1 font-sans"
-                  style={{ borderColor: 'hsl(30,10%,88%)' }}
-                  value={quickForm.date}
-                  onChange={(e) => setQuickForm((prev) => ({ ...prev, date: e.target.value }))}
+              {/* Stat Cards */}
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                <StatCard
+                  icon={<FiDollarSign size={20} />}
+                  label="Total Spent"
+                  value={`$${totalSpent.toFixed(2)}`}
+                  trend={totalBudget > 0 ? `${((totalSpent / totalBudget) * 100).toFixed(0)}% of budget` : undefined}
+                  trendUp={false}
+                />
+                <StatCard
+                  icon={remaining >= 0 ? <FiTrendingUp size={20} /> : <FiTrendingDown size={20} />}
+                  label="Remaining"
+                  value={`$${Math.abs(remaining).toFixed(2)}`}
+                  trend={remaining < 0 ? 'Over budget' : 'Under budget'}
+                  trendUp={remaining >= 0}
+                />
+                <StatCard
+                  icon={<FiStar size={20} />}
+                  label="Top Category"
+                  value={topCategory.category}
+                  trend={topCategory.amount > 0 ? `$${topCategory.amount.toFixed(2)}` : undefined}
+                  trendUp={false}
                 />
               </div>
 
-              <div>
-                <Label className="text-xs font-sans tracking-wider uppercase" style={{ color: 'hsl(30,5%,50%)' }}>Notes</Label>
-                <Textarea
-                  className="rounded-none mt-1 font-sans text-sm"
-                  style={{ borderColor: 'hsl(30,10%,88%)' }}
-                  placeholder="Optional notes..."
-                  rows={3}
-                  value={quickForm.notes}
-                  onChange={(e) => setQuickForm((prev) => ({ ...prev, notes: e.target.value }))}
+              {/* Category Distribution */}
+              {displayExpenses.length > 0 && (
+                <Card className="rounded-none border" style={{ borderColor: 'hsl(30,10%,88%)' }}>
+                  <CardHeader className="pb-2">
+                    <CardTitle className="font-serif text-sm font-light tracking-wider uppercase" style={{ color: 'hsl(30,5%,50%)' }}>
+                      Category Distribution
+                    </CardTitle>
+                  </CardHeader>
+                  <CardContent className="space-y-3">
+                    {budgets.map((b) => {
+                      const spent = categorySpending[b.category] ?? 0
+                      if (spent === 0) return null
+                      return <CategoryBar key={b.category} category={b.category} spent={spent} budget={b.budget} />
+                    })}
+                  </CardContent>
+                </Card>
+              )}
+
+              {/* Recent Expenses */}
+              <Card className="rounded-none border" style={{ borderColor: 'hsl(30,10%,88%)' }}>
+                <CardHeader className="pb-2">
+                  <div className="flex items-center justify-between">
+                    <CardTitle className="font-serif text-sm font-light tracking-wider uppercase" style={{ color: 'hsl(30,5%,50%)' }}>
+                      Recent Expenses
+                    </CardTitle>
+                    <Badge variant="outline" className="rounded-none font-sans text-xs" style={{ borderColor: 'hsl(40,30%,45%)', color: 'hsl(40,30%,45%)' }}>
+                      {displayExpenses.length}
+                    </Badge>
+                  </div>
+                </CardHeader>
+                <CardContent>
+                  {sortedExpenses.length === 0 ? (
+                    <div className="py-8 text-center">
+                      <FiPlus size={24} className="mx-auto mb-3" style={{ color: 'hsl(30,8%,80%)' }} />
+                      <p className="text-sm font-sans" style={{ color: 'hsl(30,5%,50%)' }}>No expenses logged yet.</p>
+                      <p className="text-xs font-sans mt-1" style={{ color: 'hsl(30,5%,65%)' }}>Start by adding your first expense.</p>
+                      <Button
+                        variant="outline"
+                        className="mt-4 rounded-none font-sans text-xs tracking-wider"
+                        style={{ borderColor: 'hsl(40,30%,45%)', color: 'hsl(40,30%,45%)' }}
+                        onClick={() => setActiveTab('log')}
+                      >
+                        <FiPlus size={14} className="mr-2" /> Add Expense
+                      </Button>
+                    </div>
+                  ) : (
+                    <div className="overflow-y-auto" style={{ maxHeight: '320px' }}>
+                      {sortedExpenses.map((exp) => (
+                        <ExpenseRow key={exp.id} expense={exp} onDelete={deleteExpense} />
+                      ))}
+                    </div>
+                  )}
+                </CardContent>
+              </Card>
+
+              {/* Analyze CTA */}
+              {displayExpenses.length > 0 && (
+                <Button
+                  className="w-full rounded-none font-sans text-xs tracking-wider py-6"
+                  style={{ background: 'hsl(40,30%,45%)', color: 'white' }}
+                  onClick={() => { setActiveTab('reports'); setTimeout(runAnalysis, 100) }}
+                >
+                  <FiBarChart2 size={16} className="mr-2" /> Analyze Spending
+                </Button>
+              )}
+
+              {/* Agent Status */}
+              <Card className="rounded-none border" style={{ borderColor: 'hsl(30,10%,88%)' }}>
+                <CardHeader className="py-3 px-4">
+                  <CardTitle className="text-xs font-sans tracking-wider uppercase" style={{ color: 'hsl(30,5%,50%)' }}>AI Agents</CardTitle>
+                </CardHeader>
+                <CardContent className="px-4 pb-3 space-y-2">
+                  {[
+                    { id: EXPENSE_LOGGER_AGENT_ID, name: 'Expense Logger', purpose: 'Parses natural language expense entries' },
+                    { id: BUDGET_ANALYST_AGENT_ID, name: 'Budget Analyst', purpose: 'Analyzes spending and gives recommendations' },
+                  ].map((agent) => (
+                    <div key={agent.id} className="flex items-center gap-2">
+                      <div
+                        className="w-2 h-2 flex-shrink-0 rounded-full"
+                        style={{
+                          background: activeAgentId === agent.id ? 'hsl(140,50%,45%)' : 'hsl(30,8%,80%)',
+                          boxShadow: activeAgentId === agent.id ? '0 0 6px hsl(140,50%,45%)' : 'none',
+                        }}
+                      />
+                      <div className="min-w-0">
+                        <p className="text-xs font-sans font-medium" style={{ color: 'hsl(30,5%,15%)' }}>{agent.name}</p>
+                        <p className="text-xs font-sans truncate" style={{ color: 'hsl(30,5%,60%)' }}>{agent.purpose}</p>
+                      </div>
+                    </div>
+                  ))}
+                </CardContent>
+              </Card>
+            </div>
+          )}
+
+          {/* ═══════════════════ LOG EXPENSE TAB ═══════════════════ */}
+          {activeTab === 'log' && (
+            <div className="space-y-4 pb-4">
+              <h2 className="font-serif text-xl font-light tracking-wider" style={{ color: 'hsl(30,5%,15%)' }}>
+                Log Expense
+              </h2>
+
+              {/* Mode Toggle */}
+              <div className="flex border" style={{ borderColor: 'hsl(30,10%,88%)' }}>
+                <button
+                  className="flex-1 py-2.5 text-xs font-sans tracking-wider transition-colors flex items-center justify-center gap-2"
+                  style={{
+                    background: logMode === 'chat' ? 'hsl(40,30%,45%)' : 'transparent',
+                    color: logMode === 'chat' ? 'white' : 'hsl(30,5%,50%)',
+                  }}
+                  onClick={() => setLogMode('chat')}
+                >
+                  <FiMessageSquare size={14} />Chat Mode
+                </button>
+                <button
+                  className="flex-1 py-2.5 text-xs font-sans tracking-wider transition-colors flex items-center justify-center gap-2"
+                  style={{
+                    background: logMode === 'quick' ? 'hsl(40,30%,45%)' : 'transparent',
+                    color: logMode === 'quick' ? 'white' : 'hsl(30,5%,50%)',
+                  }}
+                  onClick={() => setLogMode('quick')}
+                >
+                  <FiEdit2 size={14} />Quick Add
+                </button>
+              </div>
+
+              {/* Status Message */}
+              {saveStatus && (
+                <div
+                  className="flex items-center gap-2 p-3 text-xs font-sans border"
+                  style={{
+                    borderColor: saveStatus.type === 'success' ? 'hsl(140,40%,45%)' : 'hsl(0,50%,45%)',
+                    background: saveStatus.type === 'success' ? 'hsl(140,40%,95%)' : 'hsl(0,50%,95%)',
+                    color: saveStatus.type === 'success' ? 'hsl(140,40%,30%)' : 'hsl(0,50%,35%)',
+                  }}
+                >
+                  {saveStatus.type === 'success' ? <FiCheck size={14} /> : <FiAlertTriangle size={14} />}
+                  {saveStatus.message}
+                </div>
+              )}
+
+              {logMode === 'chat' ? (
+                <Card className="rounded-none border" style={{ borderColor: 'hsl(30,10%,88%)' }}>
+                  <CardContent className="p-0">
+                    {/* Chat Messages */}
+                    <div
+                      ref={chatScrollRef}
+                      className="overflow-y-auto p-4 space-y-3"
+                      style={{ height: '360px', background: 'hsl(30,10%,97%)' }}
+                    >
+                      {chatMessages.length === 0 && !chatLoading && (
+                        <div className="flex flex-col items-center justify-center h-full text-center">
+                          <FiMessageSquare size={28} style={{ color: 'hsl(30,8%,80%)' }} />
+                          <p className="text-sm font-sans mt-3" style={{ color: 'hsl(30,5%,50%)' }}>
+                            Describe your expense in natural language
+                          </p>
+                          <p className="text-xs font-sans mt-1" style={{ color: 'hsl(30,5%,65%)' }}>
+                            e.g., &quot;Spent $45 on groceries yesterday&quot;
+                          </p>
+                        </div>
+                      )}
+                      {chatMessages.map((msg) => (
+                        <div key={msg.id} className={`flex ${msg.role === 'user' ? 'justify-end' : 'justify-start'}`}>
+                          <div
+                            className="max-w-[80%] p-3 text-sm font-sans leading-relaxed"
+                            style={{
+                              background: msg.role === 'user' ? 'hsl(40,30%,45%)' : 'white',
+                              color: msg.role === 'user' ? 'white' : 'hsl(30,5%,15%)',
+                              border: msg.role === 'assistant' ? '1px solid hsl(30,10%,88%)' : 'none',
+                            }}
+                          >
+                            {msg.content}
+                          </div>
+                        </div>
+                      ))}
+                      {chatLoading && (
+                        <div className="flex justify-start">
+                          <div className="p-3 space-y-2" style={{ background: 'white', border: '1px solid hsl(30,10%,88%)' }}>
+                            <div className="flex items-center gap-2 text-xs font-sans" style={{ color: 'hsl(30,5%,50%)' }}>
+                              <FiClock size={12} className="animate-spin" /> Processing...
+                            </div>
+                            <Skeleton className="h-3 w-32 rounded-none" />
+                            <Skeleton className="h-3 w-24 rounded-none" />
+                          </div>
+                        </div>
+                      )}
+                    </div>
+
+                    {/* Pending Expense Confirmation */}
+                    {pendingExpense && (
+                      <div className="p-4 border-t" style={{ borderColor: 'hsl(30,10%,88%)', background: 'hsl(40,30%,97%)' }}>
+                        <div className="flex items-center justify-between mb-2">
+                          <span className="text-xs font-sans tracking-wider uppercase" style={{ color: 'hsl(40,30%,45%)' }}>
+                            Parsed Expense
+                          </span>
+                          <Badge
+                            variant={pendingExpense.confidence === 'high' ? 'default' : pendingExpense.confidence === 'medium' ? 'secondary' : 'outline'}
+                            className="rounded-none text-xs font-sans"
+                          >
+                            {pendingExpense.confidence} confidence
+                          </Badge>
+                        </div>
+                        <div className="grid grid-cols-2 gap-2 text-xs font-sans mb-3">
+                          <div><span style={{ color: 'hsl(30,5%,50%)' }}>Amount:</span> <strong>{pendingExpense.currency}{pendingExpense.amount.toFixed(2)}</strong></div>
+                          <div><span style={{ color: 'hsl(30,5%,50%)' }}>Category:</span> <strong>{pendingExpense.category}</strong></div>
+                          <div><span style={{ color: 'hsl(30,5%,50%)' }}>Date:</span> <strong>{pendingExpense.date}</strong></div>
+                          <div><span style={{ color: 'hsl(30,5%,50%)' }}>Notes:</span> <strong>{pendingExpense.notes || 'None'}</strong></div>
+                        </div>
+                        <div className="flex gap-2">
+                          <Button
+                            className="flex-1 rounded-none font-sans text-xs tracking-wider"
+                            style={{ background: 'hsl(40,30%,45%)', color: 'white' }}
+                            onClick={savePendingExpense}
+                          >
+                            <FiCheck size={14} className="mr-1" /> Save Expense
+                          </Button>
+                          <Button
+                            variant="outline"
+                            className="rounded-none font-sans text-xs tracking-wider"
+                            style={{ borderColor: 'hsl(30,10%,88%)' }}
+                            onClick={() => setPendingExpense(null)}
+                          >
+                            Dismiss
+                          </Button>
+                        </div>
+                      </div>
+                    )}
+
+                    {/* Chat Input */}
+                    <div className="p-3 border-t flex gap-2" style={{ borderColor: 'hsl(30,10%,88%)' }}>
+                      <input
+                        type="text"
+                        className="flex-1 px-3 py-2 text-sm font-sans border outline-none focus:ring-1"
+                        style={{ borderColor: 'hsl(30,10%,88%)', background: 'white', color: 'hsl(30,5%,15%)' }}
+                        placeholder="Describe your expense..."
+                        value={chatInput}
+                        onChange={(e) => setChatInput(e.target.value)}
+                        onKeyDown={(e) => {
+                          if (e.key === 'Enter' && !e.shiftKey) {
+                            e.preventDefault()
+                            handleChatSend()
+                          }
+                        }}
+                        disabled={chatLoading}
+                      />
+                      <Button
+                        className="rounded-none px-4"
+                        style={{ background: chatLoading || !chatInput.trim() ? 'hsl(30,8%,80%)' : 'hsl(40,30%,45%)', color: 'white' }}
+                        onClick={handleChatSend}
+                        disabled={chatLoading || !chatInput.trim()}
+                      >
+                        <FiSend size={16} />
+                      </Button>
+                    </div>
+                  </CardContent>
+                </Card>
+              ) : (
+                /* Quick Add Form */
+                <Card className="rounded-none border" style={{ borderColor: 'hsl(30,10%,88%)' }}>
+                  <CardContent className="p-5 space-y-5">
+                    <div>
+                      <label className="block text-xs font-sans tracking-wider uppercase mb-1.5" style={{ color: 'hsl(30,5%,50%)' }}>Amount</label>
+                      <div className="flex items-center">
+                        <span className="px-3 py-2 text-sm font-sans border border-r-0" style={{ borderColor: 'hsl(30,10%,88%)', background: 'hsl(30,10%,95%)', color: 'hsl(30,5%,50%)' }}>$</span>
+                        <input
+                          type="number"
+                          className="flex-1 px-3 py-2 text-sm font-sans border outline-none focus:ring-1"
+                          style={{ borderColor: 'hsl(30,10%,88%)', background: 'white', color: 'hsl(30,5%,15%)' }}
+                          placeholder="0.00"
+                          min="0"
+                          step="0.01"
+                          value={quickAmount}
+                          onChange={(e) => setQuickAmount(e.target.value)}
+                        />
+                      </div>
+                    </div>
+
+                    <div>
+                      <label className="block text-xs font-sans tracking-wider uppercase mb-1.5" style={{ color: 'hsl(30,5%,50%)' }}>Category</label>
+                      <Select value={quickCategory} onValueChange={setQuickCategory}>
+                        <SelectTrigger className="rounded-none font-sans text-sm" style={{ borderColor: 'hsl(30,10%,88%)' }}>
+                          <SelectValue />
+                        </SelectTrigger>
+                        <SelectContent className="rounded-none">
+                          {CATEGORY_LIST.map((cat) => (
+                            <SelectItem key={cat} value={cat} className="rounded-none font-sans text-sm">{cat}</SelectItem>
+                          ))}
+                          {budgets.filter(b => !CATEGORY_LIST.includes(b.category)).map((b) => (
+                            <SelectItem key={b.category} value={b.category} className="rounded-none font-sans text-sm">{b.category}</SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                    </div>
+
+                    <div>
+                      <label className="block text-xs font-sans tracking-wider uppercase mb-1.5" style={{ color: 'hsl(30,5%,50%)' }}>Date</label>
+                      <input
+                        type="date"
+                        className="w-full px-3 py-2 text-sm font-sans border outline-none focus:ring-1"
+                        style={{ borderColor: 'hsl(30,10%,88%)', background: 'white', color: 'hsl(30,5%,15%)' }}
+                        value={quickDate}
+                        onChange={(e) => setQuickDate(e.target.value)}
+                      />
+                    </div>
+
+                    <div>
+                      <label className="block text-xs font-sans tracking-wider uppercase mb-1.5" style={{ color: 'hsl(30,5%,50%)' }}>Notes</label>
+                      <textarea
+                        className="w-full px-3 py-2 text-sm font-sans border outline-none focus:ring-1 resize-none"
+                        style={{ borderColor: 'hsl(30,10%,88%)', background: 'white', color: 'hsl(30,5%,15%)' }}
+                        placeholder="Optional notes..."
+                        rows={3}
+                        value={quickNotes}
+                        onChange={(e) => setQuickNotes(e.target.value)}
+                      />
+                    </div>
+
+                    <Button
+                      className="w-full rounded-none font-sans text-xs tracking-wider py-5"
+                      style={{ background: 'hsl(40,30%,45%)', color: 'white' }}
+                      onClick={handleQuickAdd}
+                    >
+                      <FiPlus size={16} className="mr-2" /> Save Expense
+                    </Button>
+                  </CardContent>
+                </Card>
+              )}
+            </div>
+          )}
+
+          {/* ═══════════════════ BUDGETS TAB ═══════════════════ */}
+          {activeTab === 'budgets' && (
+            <div className="space-y-4 pb-4">
+              <div className="flex items-center justify-between">
+                <h2 className="font-serif text-xl font-light tracking-wider" style={{ color: 'hsl(30,5%,15%)' }}>
+                  Monthly Budgets
+                </h2>
+                <div className="text-right">
+                  <p className="text-xs font-sans tracking-wider uppercase" style={{ color: 'hsl(30,5%,50%)' }}>Total Budget</p>
+                  <p className="font-serif text-lg font-light" style={{ color: 'hsl(40,30%,45%)' }}>${totalBudget.toFixed(0)}</p>
+                </div>
+              </div>
+
+              {budgetSaveStatus && (
+                <div
+                  className="flex items-center gap-2 p-3 text-xs font-sans border"
+                  style={{
+                    borderColor: budgetSaveStatus.includes('exists') ? 'hsl(40,60%,50%)' : 'hsl(140,40%,45%)',
+                    background: budgetSaveStatus.includes('exists') ? 'hsl(40,60%,95%)' : 'hsl(140,40%,95%)',
+                    color: budgetSaveStatus.includes('exists') ? 'hsl(40,60%,30%)' : 'hsl(140,40%,30%)',
+                  }}
+                >
+                  {budgetSaveStatus.includes('exists') ? <FiAlertTriangle size={14} /> : <FiCheck size={14} />}
+                  {budgetSaveStatus}
+                </div>
+              )}
+
+              <Card className="rounded-none border" style={{ borderColor: 'hsl(30,10%,88%)' }}>
+                <CardContent className="p-0">
+                  <div className="overflow-y-auto" style={{ maxHeight: '420px' }}>
+                    {budgets.map((b) => {
+                      const spent = categorySpending[b.category] ?? 0
+                      const utilPercent = b.budget > 0 ? (spent / b.budget) * 100 : 0
+                      const editValue = budgetEdits[b.category]
+                      return (
+                        <div key={b.category} className="p-4 border-b" style={{ borderColor: 'hsl(30,10%,93%)' }}>
+                          <div className="flex items-center justify-between mb-2">
+                            <span className="text-sm font-sans font-medium" style={{ color: 'hsl(30,5%,15%)' }}>{b.category}</span>
+                            <div className="flex items-center gap-2">
+                              <span className="text-xs font-sans" style={{ color: 'hsl(30,5%,50%)' }}>$</span>
+                              <input
+                                type="number"
+                                className="w-20 h-7 px-2 text-sm font-sans text-right border outline-none focus:ring-1"
+                                style={{ borderColor: 'hsl(30,10%,88%)', background: 'white', color: 'hsl(30,5%,15%)' }}
+                                value={editValue !== undefined ? editValue : String(b.budget)}
+                                onChange={(e) => handleBudgetEditChange(b.category, e.target.value)}
+                                min="0"
+                              />
+                              <button
+                                className="p-1 transition-colors hover:opacity-70"
+                                style={{ color: 'hsl(0,50%,45%)' }}
+                                onClick={() => deleteBudgetCategory(b.category)}
+                              >
+                                <FiTrash2 size={12} />
+                              </button>
+                            </div>
+                          </div>
+                          <div className="h-1.5 w-full" style={{ background: 'hsl(30,8%,92%)' }}>
+                            <div
+                              className="h-full transition-all duration-300"
+                              style={{ width: `${Math.min(utilPercent, 100)}%`, background: getUtilizationColor(utilPercent) }}
+                            />
+                          </div>
+                          <div className="flex items-center justify-between mt-1">
+                            <span className="text-xs font-sans" style={{ color: 'hsl(30,5%,60%)' }}>
+                              ${spent.toFixed(0)} spent
+                            </span>
+                            <span className="text-xs font-sans" style={{ color: getUtilizationColor(utilPercent) }}>
+                              {utilPercent.toFixed(0)}%
+                            </span>
+                          </div>
+                        </div>
+                      )
+                    })}
+                  </div>
+                </CardContent>
+              </Card>
+
+              {/* Add Category */}
+              <div className="flex gap-2">
+                <input
+                  type="text"
+                  className="flex-1 px-3 py-2 text-sm font-sans border outline-none focus:ring-1"
+                  style={{ borderColor: 'hsl(30,10%,88%)', background: 'white', color: 'hsl(30,5%,15%)' }}
+                  placeholder="New category name..."
+                  value={newCategory}
+                  onChange={(e) => setNewCategory(e.target.value)}
+                  onKeyDown={(e) => { if (e.key === 'Enter') addCategoryBudget() }}
                 />
+                <Button
+                  variant="outline"
+                  className="rounded-none font-sans text-xs tracking-wider"
+                  style={{ borderColor: 'hsl(40,30%,45%)', color: 'hsl(40,30%,45%)' }}
+                  onClick={addCategoryBudget}
+                >
+                  <FiPlus size={14} className="mr-1" /> Add
+                </Button>
               </div>
 
               <Button
                 className="w-full rounded-none font-sans text-xs tracking-wider py-5"
                 style={{ background: 'hsl(40,30%,45%)', color: 'white' }}
-                onClick={handleQuickAdd}
+                onClick={saveBudgets}
               >
-                <FiPlus size={16} className="mr-2" /> Save Expense
+                <FiCheck size={16} className="mr-2" /> Save Budgets
               </Button>
-            </CardContent>
-          </Card>
-        )}
-      </div>
-    )
-  }
-
-  // ─────────────────── TAB: BUDGETS ───────────────────
-
-  function BudgetsTab() {
-    return (
-      <div className="space-y-4 pb-4">
-        <div className="flex items-center justify-between">
-          <h2 className="font-serif text-xl font-light tracking-wider" style={{ color: 'hsl(30,5%,15%)' }}>
-            Monthly Budgets
-          </h2>
-          <div className="text-right">
-            <p className="text-xs font-sans tracking-wider uppercase" style={{ color: 'hsl(30,5%,50%)' }}>Total Budget</p>
-            <p className="font-serif text-lg font-light" style={{ color: 'hsl(40,30%,45%)' }}>${totalBudget.toFixed(0)}</p>
-          </div>
-        </div>
-
-        {budgetSaveStatus && (
-          <div
-            className="flex items-center gap-2 p-3 text-xs font-sans border"
-            style={{
-              borderColor: 'hsl(140,40%,45%)',
-              background: 'hsl(140,40%,95%)',
-              color: 'hsl(140,40%,30%)',
-            }}
-          >
-            <FiCheck size={14} />
-            {budgetSaveStatus}
-          </div>
-        )}
-
-        <Card className="rounded-none border" style={{ borderColor: 'hsl(30,10%,88%)' }}>
-          <CardContent className="p-0">
-            <ScrollArea className="max-h-[400px]">
-              {budgets.map((b) => {
-                const spent = categorySpending[b.category] ?? 0
-                const utilPercent = b.budget > 0 ? (spent / b.budget) * 100 : 0
-                const editValue = budgetEdits[b.category]
-                return (
-                  <div key={b.category} className="p-4 border-b" style={{ borderColor: 'hsl(30,10%,93%)' }}>
-                    <div className="flex items-center justify-between mb-2">
-                      <span className="text-sm font-sans font-medium" style={{ color: 'hsl(30,5%,15%)' }}>{b.category}</span>
-                      <div className="flex items-center gap-2">
-                        <span className="text-xs font-sans" style={{ color: 'hsl(30,5%,50%)' }}>$</span>
-                        <Input
-                          type="number"
-                          className="w-20 h-7 rounded-none font-sans text-sm text-right"
-                          style={{ borderColor: 'hsl(30,10%,88%)' }}
-                          value={editValue !== undefined ? editValue : String(b.budget)}
-                          onChange={(e) => setBudgetEdits((prev) => ({ ...prev, [b.category]: e.target.value }))}
-                          min="0"
-                        />
-                        <Button
-                          variant="ghost"
-                          size="sm"
-                          className="h-7 w-7 p-0 rounded-none"
-                          style={{ color: 'hsl(0,50%,45%)' }}
-                          onClick={() => deleteBudgetCategory(b.category)}
-                        >
-                          <FiTrash2 size={12} />
-                        </Button>
-                      </div>
-                    </div>
-                    <div className="h-1.5 w-full" style={{ background: 'hsl(30,8%,92%)' }}>
-                      <div
-                        className="h-full transition-all duration-300"
-                        style={{ width: `${Math.min(utilPercent, 100)}%`, background: getUtilizationColor(utilPercent) }}
-                      />
-                    </div>
-                    <div className="flex items-center justify-between mt-1">
-                      <span className="text-xs font-sans" style={{ color: 'hsl(30,5%,60%)' }}>
-                        ${spent.toFixed(0)} spent
-                      </span>
-                      <span className="text-xs font-sans" style={{ color: getUtilizationColor(utilPercent) }}>
-                        {utilPercent.toFixed(0)}%
-                      </span>
-                    </div>
-                  </div>
-                )
-              })}
-            </ScrollArea>
-          </CardContent>
-        </Card>
-
-        {/* Add Category */}
-        <div className="flex gap-2">
-          <Input
-            className="rounded-none font-sans text-sm flex-1"
-            style={{ borderColor: 'hsl(30,10%,88%)' }}
-            placeholder="New category name..."
-            value={newCategory}
-            onChange={(e) => setNewCategory(e.target.value)}
-            onKeyDown={(e) => {
-              if (e.key === 'Enter') addCategoryBudget()
-            }}
-          />
-          <Button
-            variant="outline"
-            className="rounded-none font-sans text-xs tracking-wider"
-            style={{ borderColor: 'hsl(40,30%,45%)', color: 'hsl(40,30%,45%)' }}
-            onClick={addCategoryBudget}
-          >
-            <FiPlus size={14} className="mr-1" /> Add
-          </Button>
-        </div>
-
-        <Button
-          className="w-full rounded-none font-sans text-xs tracking-wider py-5"
-          style={{ background: 'hsl(40,30%,45%)', color: 'white' }}
-          onClick={saveBudgets}
-        >
-          <FiCheck size={16} className="mr-2" /> Save Budgets
-        </Button>
-      </div>
-    )
-  }
-
-  // ─────────────────── TAB: REPORTS ───────────────────
-
-  function ReportsTab() {
-    return (
-      <div className="space-y-5 pb-4">
-        <div className="flex items-center justify-between">
-          <h2 className="font-serif text-xl font-light tracking-wider" style={{ color: 'hsl(30,5%,15%)' }}>
-            Reports & Analysis
-          </h2>
-          <Badge variant="outline" className="rounded-none font-sans text-xs" style={{ borderColor: 'hsl(40,30%,45%)', color: 'hsl(40,30%,45%)' }}>
-            {formatMonthLabel(selectedMonth || getCurrentMonth())}
-          </Badge>
-        </div>
-
-        <Button
-          className="w-full rounded-none font-sans text-xs tracking-wider py-5"
-          style={{ background: 'hsl(40,30%,45%)', color: 'white' }}
-          onClick={runAnalysis}
-          disabled={analysisLoading}
-        >
-          {analysisLoading ? (
-            <>
-              <FiClock size={16} className="mr-2 animate-spin" /> Analyzing...
-            </>
-          ) : (
-            <>
-              <FiBarChart2 size={16} className="mr-2" /> Analyze Spending
-            </>
+            </div>
           )}
-        </Button>
 
-        {/* Error */}
-        {analysisError && (
-          <div className="flex items-center gap-2 p-3 text-xs font-sans border" style={{ borderColor: 'hsl(0,50%,45%)', background: 'hsl(0,50%,95%)', color: 'hsl(0,50%,35%)' }}>
-            <FiAlertTriangle size={14} />
-            {analysisError}
-          </div>
-        )}
+          {/* ═══════════════════ REPORTS TAB ═══════════════════ */}
+          {activeTab === 'reports' && (
+            <div className="space-y-5 pb-4">
+              <div className="flex items-center justify-between">
+                <h2 className="font-serif text-xl font-light tracking-wider" style={{ color: 'hsl(30,5%,15%)' }}>
+                  Reports & Analysis
+                </h2>
+                <Badge variant="outline" className="rounded-none font-sans text-xs" style={{ borderColor: 'hsl(40,30%,45%)', color: 'hsl(40,30%,45%)' }}>
+                  {formatMonthLabel(selectedMonth || getCurrentMonth())}
+                </Badge>
+              </div>
 
-        {/* Loading Skeleton */}
-        {analysisLoading && (
-          <div className="space-y-4">
-            <Skeleton className="h-24 w-full rounded-none" />
-            <Skeleton className="h-40 w-full rounded-none" />
-            <Skeleton className="h-32 w-full rounded-none" />
-          </div>
-        )}
+              <Button
+                className="w-full rounded-none font-sans text-xs tracking-wider py-5"
+                style={{ background: analysisLoading ? 'hsl(30,8%,70%)' : 'hsl(40,30%,45%)', color: 'white' }}
+                onClick={runAnalysis}
+                disabled={analysisLoading}
+              >
+                {analysisLoading ? (
+                  <><FiClock size={16} className="mr-2 animate-spin" /> Analyzing...</>
+                ) : (
+                  <><FiBarChart2 size={16} className="mr-2" /> Analyze Spending</>
+                )}
+              </Button>
 
-        {/* Empty State */}
-        {!analysisResult && !analysisLoading && !analysisError && (
-          <Card className="rounded-none border" style={{ borderColor: 'hsl(30,10%,88%)' }}>
-            <CardContent className="py-12 text-center">
-              <FiBarChart2 size={32} className="mx-auto mb-4" style={{ color: 'hsl(30,8%,80%)' }} />
-              <p className="text-sm font-sans" style={{ color: 'hsl(30,5%,50%)' }}>
-                No analysis yet
-              </p>
-              <p className="text-xs font-sans mt-1" style={{ color: 'hsl(30,5%,65%)' }}>
-                Click Analyze Spending to get started
-              </p>
-            </CardContent>
-          </Card>
-        )}
-
-        {/* Analysis Results */}
-        {analysisResult && !analysisLoading && (
-          <div className="space-y-5">
-            {/* Utilization Overview */}
-            <Card className="rounded-none border" style={{ borderColor: 'hsl(30,10%,88%)' }}>
-              <CardHeader className="pb-2">
-                <CardTitle className="font-serif text-sm font-light tracking-wider uppercase" style={{ color: 'hsl(30,5%,50%)' }}>
-                  Budget Utilization
-                </CardTitle>
-              </CardHeader>
-              <CardContent>
-                <div className="flex items-end gap-4 mb-3">
-                  <span className="font-serif text-3xl font-light" style={{ color: getUtilizationColor(analysisResult.budget_utilization_percent) }}>
-                    {analysisResult.budget_utilization_percent.toFixed(1)}%
-                  </span>
-                  <span className="text-xs font-sans pb-1" style={{ color: 'hsl(30,5%,50%)' }}>
-                    ${analysisResult.total_spent.toFixed(2)} of ${analysisResult.total_budget.toFixed(2)}
-                  </span>
+              {/* Error */}
+              {analysisError && (
+                <div className="flex items-center gap-2 p-3 text-xs font-sans border" style={{ borderColor: 'hsl(0,50%,45%)', background: 'hsl(0,50%,95%)', color: 'hsl(0,50%,35%)' }}>
+                  <FiAlertTriangle size={14} />
+                  {analysisError}
                 </div>
-                <div className="h-3 w-full" style={{ background: 'hsl(30,8%,92%)' }}>
-                  <div
-                    className="h-full transition-all duration-500"
-                    style={{
-                      width: `${Math.min(analysisResult.budget_utilization_percent, 100)}%`,
-                      background: getUtilizationColor(analysisResult.budget_utilization_percent),
-                    }}
-                  />
+              )}
+
+              {/* Loading Skeleton */}
+              {analysisLoading && (
+                <div className="space-y-4">
+                  <Skeleton className="h-24 w-full rounded-none" />
+                  <Skeleton className="h-40 w-full rounded-none" />
+                  <Skeleton className="h-32 w-full rounded-none" />
                 </div>
-              </CardContent>
-            </Card>
+              )}
 
-            {/* Monthly Summary */}
-            {analysisResult.monthly_summary && (
-              <Card className="rounded-none border" style={{ borderColor: 'hsl(30,10%,88%)' }}>
-                <CardHeader className="pb-2">
-                  <CardTitle className="font-serif text-sm font-light tracking-wider uppercase" style={{ color: 'hsl(30,5%,50%)' }}>
-                    Monthly Summary
-                  </CardTitle>
-                </CardHeader>
-                <CardContent className="font-sans" style={{ color: 'hsl(30,5%,25%)' }}>
-                  {renderMarkdown(analysisResult.monthly_summary)}
-                </CardContent>
-              </Card>
-            )}
+              {/* Empty State */}
+              {!analysisResult && !analysisLoading && !analysisError && (
+                <Card className="rounded-none border" style={{ borderColor: 'hsl(30,10%,88%)' }}>
+                  <CardContent className="py-12 text-center">
+                    <FiBarChart2 size={32} className="mx-auto mb-4" style={{ color: 'hsl(30,8%,80%)' }} />
+                    <p className="text-sm font-sans" style={{ color: 'hsl(30,5%,50%)' }}>No analysis yet</p>
+                    <p className="text-xs font-sans mt-1" style={{ color: 'hsl(30,5%,65%)' }}>Click Analyze Spending to get started</p>
+                  </CardContent>
+                </Card>
+              )}
 
-            {/* Category Breakdown */}
-            {Array.isArray(analysisResult.category_breakdown) && analysisResult.category_breakdown.length > 0 && (
-              <Card className="rounded-none border" style={{ borderColor: 'hsl(30,10%,88%)' }}>
-                <CardHeader className="pb-2">
-                  <CardTitle className="font-serif text-sm font-light tracking-wider uppercase" style={{ color: 'hsl(30,5%,50%)' }}>
-                    Budget vs Actual
-                  </CardTitle>
-                </CardHeader>
-                <CardContent className="space-y-4">
-                  {analysisResult.category_breakdown.map((item, idx) => {
-                    const statusColor = (item?.status ?? '').toLowerCase().includes('over')
-                      ? 'hsl(0,50%,45%)'
-                      : (item?.status ?? '').toLowerCase().includes('near')
-                        ? 'hsl(40,60%,50%)'
-                        : 'hsl(140,40%,45%)'
-                    const utilPct = typeof item?.utilization_percent === 'number' ? item.utilization_percent : 0
-                    return (
-                      <div key={item?.category ?? idx} className="space-y-1.5">
-                        <div className="flex items-center justify-between">
-                          <div className="flex items-center gap-2">
-                            <span className="text-sm font-sans font-medium" style={{ color: 'hsl(30,5%,15%)' }}>
-                              {item?.category ?? 'Unknown'}
-                            </span>
-                            <Badge variant="outline" className="rounded-none text-xs font-sans" style={{ borderColor: statusColor, color: statusColor }}>
-                              {item?.status ?? ''}
-                            </Badge>
-                          </div>
-                          <span className="text-xs font-sans" style={{ color: 'hsl(30,5%,50%)' }}>
-                            ${typeof item?.spent === 'number' ? item.spent.toFixed(0) : 0} / ${typeof item?.budget === 'number' ? item.budget.toFixed(0) : 0}
-                          </span>
-                        </div>
-                        <div className="h-2 w-full" style={{ background: 'hsl(30,8%,92%)' }}>
-                          <div className="h-full transition-all duration-300" style={{ width: `${Math.min(utilPct, 100)}%`, background: statusColor }} />
-                        </div>
-                        {typeof item?.gap === 'number' && item.gap !== 0 && (
-                          <p className="text-xs font-sans" style={{ color: item.gap < 0 ? 'hsl(0,50%,45%)' : 'hsl(140,40%,45%)' }}>
-                            {item.gap < 0 ? `$${Math.abs(item.gap).toFixed(0)} over budget` : `$${item.gap.toFixed(0)} under budget`}
-                          </p>
-                        )}
-                      </div>
-                    )
-                  })}
-                </CardContent>
-              </Card>
-            )}
-
-            {/* Overspending Areas */}
-            {Array.isArray(analysisResult.overspending_areas) && analysisResult.overspending_areas.length > 0 && (
-              <Card className="rounded-none border" style={{ borderColor: 'hsl(0,50%,85%)' }}>
-                <CardHeader className="pb-2">
-                  <CardTitle className="font-serif text-sm font-light tracking-wider uppercase flex items-center gap-2" style={{ color: 'hsl(0,50%,45%)' }}>
-                    <FiAlertTriangle size={14} /> Overspending Areas
-                  </CardTitle>
-                </CardHeader>
-                <CardContent className="space-y-3">
-                  {analysisResult.overspending_areas.map((area, idx) => (
-                    <div key={area?.category ?? idx} className="flex items-center justify-between py-2 border-b" style={{ borderColor: 'hsl(30,10%,93%)' }}>
-                      <div>
-                        <span className="text-sm font-sans font-medium" style={{ color: 'hsl(30,5%,15%)' }}>
-                          {area?.category ?? 'Unknown'}
+              {/* Analysis Results */}
+              {analysisResult && !analysisLoading && (
+                <div className="space-y-5">
+                  {/* Utilization Overview */}
+                  <Card className="rounded-none border" style={{ borderColor: 'hsl(30,10%,88%)' }}>
+                    <CardHeader className="pb-2">
+                      <CardTitle className="font-serif text-sm font-light tracking-wider uppercase" style={{ color: 'hsl(30,5%,50%)' }}>
+                        Budget Utilization
+                      </CardTitle>
+                    </CardHeader>
+                    <CardContent>
+                      <div className="flex items-end gap-4 mb-3">
+                        <span className="font-serif text-3xl font-light" style={{ color: getUtilizationColor(analysisResult.budget_utilization_percent) }}>
+                          {analysisResult.budget_utilization_percent.toFixed(1)}%
                         </span>
-                        <p className="text-xs font-sans" style={{ color: 'hsl(0,50%,45%)' }}>
-                          ${typeof area?.overspend_amount === 'number' ? area.overspend_amount.toFixed(2) : 0} over
-                        </p>
+                        <span className="text-xs font-sans pb-1" style={{ color: 'hsl(30,5%,50%)' }}>
+                          ${analysisResult.total_spent.toFixed(2)} of ${analysisResult.total_budget.toFixed(2)}
+                        </span>
                       </div>
-                      <Badge variant={getSeverityVariant(area?.severity ?? '')} className="rounded-none text-xs font-sans tracking-wider">
-                        {area?.severity ?? 'unknown'}
-                      </Badge>
-                    </div>
-                  ))}
-                </CardContent>
-              </Card>
-            )}
-
-            {/* Recommendations */}
-            {Array.isArray(analysisResult.recommendations) && analysisResult.recommendations.length > 0 && (
-              <div className="space-y-3">
-                <h3 className="font-serif text-sm font-light tracking-wider uppercase" style={{ color: 'hsl(30,5%,50%)' }}>
-                  Recommendations
-                </h3>
-                {analysisResult.recommendations.map((rec, idx) => (
-                  <Card key={rec?.title ?? idx} className="rounded-none border" style={{ borderColor: 'hsl(30,10%,88%)' }}>
-                    <CardContent className="p-4">
-                      <div className="flex items-start justify-between mb-2">
-                        <h4 className="font-sans text-sm font-medium" style={{ color: 'hsl(30,5%,15%)' }}>
-                          {rec?.title ?? 'Recommendation'}
-                        </h4>
-                        <Badge variant={getPriorityVariant(rec?.priority ?? '')} className="rounded-none text-xs font-sans tracking-wider ml-2 flex-shrink-0">
-                          {rec?.priority ?? 'medium'}
-                        </Badge>
+                      <div className="h-3 w-full" style={{ background: 'hsl(30,8%,92%)' }}>
+                        <div
+                          className="h-full transition-all duration-500"
+                          style={{
+                            width: `${Math.min(analysisResult.budget_utilization_percent, 100)}%`,
+                            background: getUtilizationColor(analysisResult.budget_utilization_percent),
+                          }}
+                        />
                       </div>
-                      <p className="text-xs font-sans leading-relaxed mb-2" style={{ color: 'hsl(30,5%,40%)' }}>
-                        {rec?.description ?? ''}
-                      </p>
-                      {rec?.potential_savings && (
-                        <div className="flex items-center gap-1 text-xs font-sans" style={{ color: 'hsl(140,40%,40%)' }}>
-                          <FiDollarSign size={12} />
-                          <span>Potential savings: {rec.potential_savings}</span>
-                        </div>
-                      )}
                     </CardContent>
                   </Card>
-                ))}
-              </div>
-            )}
-          </div>
+
+                  {/* Monthly Summary */}
+                  {analysisResult.monthly_summary && (
+                    <Card className="rounded-none border" style={{ borderColor: 'hsl(30,10%,88%)' }}>
+                      <CardHeader className="pb-2">
+                        <CardTitle className="font-serif text-sm font-light tracking-wider uppercase" style={{ color: 'hsl(30,5%,50%)' }}>
+                          Monthly Summary
+                        </CardTitle>
+                      </CardHeader>
+                      <CardContent className="font-sans" style={{ color: 'hsl(30,5%,25%)' }}>
+                        <RenderMarkdown text={analysisResult.monthly_summary} />
+                      </CardContent>
+                    </Card>
+                  )}
+
+                  {/* Category Breakdown */}
+                  {Array.isArray(analysisResult.category_breakdown) && analysisResult.category_breakdown.length > 0 && (
+                    <Card className="rounded-none border" style={{ borderColor: 'hsl(30,10%,88%)' }}>
+                      <CardHeader className="pb-2">
+                        <CardTitle className="font-serif text-sm font-light tracking-wider uppercase" style={{ color: 'hsl(30,5%,50%)' }}>
+                          Budget vs Actual
+                        </CardTitle>
+                      </CardHeader>
+                      <CardContent className="space-y-4">
+                        {analysisResult.category_breakdown.map((item, idx) => {
+                          const statusColor = (item?.status ?? '').toLowerCase().includes('over')
+                            ? 'hsl(0,50%,45%)'
+                            : (item?.status ?? '').toLowerCase().includes('near')
+                              ? 'hsl(40,60%,50%)'
+                              : 'hsl(140,40%,45%)'
+                          const utilPct = typeof item?.utilization_percent === 'number' ? item.utilization_percent : 0
+                          return (
+                            <div key={item?.category ?? idx} className="space-y-1.5">
+                              <div className="flex items-center justify-between">
+                                <div className="flex items-center gap-2">
+                                  <span className="text-sm font-sans font-medium" style={{ color: 'hsl(30,5%,15%)' }}>
+                                    {item?.category ?? 'Unknown'}
+                                  </span>
+                                  <Badge variant="outline" className="rounded-none text-xs font-sans" style={{ borderColor: statusColor, color: statusColor }}>
+                                    {item?.status ?? ''}
+                                  </Badge>
+                                </div>
+                                <span className="text-xs font-sans" style={{ color: 'hsl(30,5%,50%)' }}>
+                                  ${typeof item?.spent === 'number' ? item.spent.toFixed(0) : 0} / ${typeof item?.budget === 'number' ? item.budget.toFixed(0) : 0}
+                                </span>
+                              </div>
+                              <div className="h-2 w-full" style={{ background: 'hsl(30,8%,92%)' }}>
+                                <div className="h-full transition-all duration-300" style={{ width: `${Math.min(utilPct, 100)}%`, background: statusColor }} />
+                              </div>
+                              {typeof item?.gap === 'number' && item.gap !== 0 && (
+                                <p className="text-xs font-sans" style={{ color: item.gap < 0 ? 'hsl(0,50%,45%)' : 'hsl(140,40%,45%)' }}>
+                                  {item.gap < 0 ? `$${Math.abs(item.gap).toFixed(0)} over budget` : `$${item.gap.toFixed(0)} under budget`}
+                                </p>
+                              )}
+                            </div>
+                          )
+                        })}
+                      </CardContent>
+                    </Card>
+                  )}
+
+                  {/* Overspending Areas */}
+                  {Array.isArray(analysisResult.overspending_areas) && analysisResult.overspending_areas.length > 0 && (
+                    <Card className="rounded-none border" style={{ borderColor: 'hsl(0,50%,85%)' }}>
+                      <CardHeader className="pb-2">
+                        <CardTitle className="font-serif text-sm font-light tracking-wider uppercase flex items-center gap-2" style={{ color: 'hsl(0,50%,45%)' }}>
+                          <FiAlertTriangle size={14} /> Overspending Areas
+                        </CardTitle>
+                      </CardHeader>
+                      <CardContent className="space-y-3">
+                        {analysisResult.overspending_areas.map((area, idx) => (
+                          <div key={area?.category ?? idx} className="flex items-center justify-between py-2 border-b" style={{ borderColor: 'hsl(30,10%,93%)' }}>
+                            <div>
+                              <span className="text-sm font-sans font-medium" style={{ color: 'hsl(30,5%,15%)' }}>
+                                {area?.category ?? 'Unknown'}
+                              </span>
+                              <p className="text-xs font-sans" style={{ color: 'hsl(0,50%,45%)' }}>
+                                ${typeof area?.overspend_amount === 'number' ? area.overspend_amount.toFixed(2) : 0} over
+                              </p>
+                            </div>
+                            <Badge variant={getSeverityVariant(area?.severity ?? '')} className="rounded-none text-xs font-sans tracking-wider">
+                              {area?.severity ?? 'unknown'}
+                            </Badge>
+                          </div>
+                        ))}
+                      </CardContent>
+                    </Card>
+                  )}
+
+                  {/* Recommendations */}
+                  {Array.isArray(analysisResult.recommendations) && analysisResult.recommendations.length > 0 && (
+                    <div className="space-y-3">
+                      <h3 className="font-serif text-sm font-light tracking-wider uppercase" style={{ color: 'hsl(30,5%,50%)' }}>
+                        Recommendations
+                      </h3>
+                      {analysisResult.recommendations.map((rec, idx) => (
+                        <Card key={rec?.title ?? idx} className="rounded-none border" style={{ borderColor: 'hsl(30,10%,88%)' }}>
+                          <CardContent className="p-4">
+                            <div className="flex items-start justify-between mb-2">
+                              <h4 className="font-sans text-sm font-medium" style={{ color: 'hsl(30,5%,15%)' }}>
+                                {rec?.title ?? 'Recommendation'}
+                              </h4>
+                              <Badge variant={getPriorityVariant(rec?.priority ?? '')} className="rounded-none text-xs font-sans tracking-wider ml-2 flex-shrink-0">
+                                {rec?.priority ?? 'medium'}
+                              </Badge>
+                            </div>
+                            <p className="text-xs font-sans leading-relaxed mb-2" style={{ color: 'hsl(30,5%,40%)' }}>
+                              {rec?.description ?? ''}
+                            </p>
+                            {rec?.potential_savings && (
+                              <div className="flex items-center gap-1 text-xs font-sans" style={{ color: 'hsl(140,40%,40%)' }}>
+                                <FiDollarSign size={12} />
+                                <span>Potential savings: {rec.potential_savings}</span>
+                              </div>
+                            )}
+                          </CardContent>
+                        </Card>
+                      ))}
+                    </div>
+                  )}
+                </div>
+              )}
+            </div>
+          )}
+        </main>
+
+        {/* Floating Add Button */}
+        {activeTab === 'dashboard' && (
+          <button
+            className="fixed z-40 flex items-center justify-center w-14 h-14 shadow-lg transition-transform hover:scale-105 active:scale-95"
+            style={{ bottom: '80px', right: '20px', background: 'hsl(40,30%,45%)', color: 'white' }}
+            onClick={() => setActiveTab('log')}
+            aria-label="Add expense"
+          >
+            <FiPlus size={24} />
+          </button>
         )}
 
-        {/* Agent Status */}
-        <AgentStatusPanel activeAgentId={activeAgentId} />
-      </div>
-    )
-  }
-
-  // ─────────────────── RENDER ───────────────────
-
-  return (
-    <ErrorBoundary>
-      <div style={THEME_VARS} className="min-h-screen font-sans" >
-        <div className="min-h-screen" style={{ background: 'hsl(0,0%,99%)', color: 'hsl(30,5%,15%)' }}>
-          {/* Header */}
-          <header className="border-b px-4 py-4" style={{ borderColor: 'hsl(30,10%,88%)', background: 'white' }}>
-            <div className="max-w-lg mx-auto flex items-center justify-between">
-              <div>
-                <h1 className="font-serif text-lg font-light tracking-wider" style={{ color: 'hsl(30,5%,15%)' }}>
-                  BudgetWise
-                </h1>
-                <p className="text-xs font-sans tracking-wider" style={{ color: 'hsl(30,5%,55%)' }}>
-                  Monthly Budget Tracker
-                </p>
-              </div>
-              <div className="flex items-center gap-2">
-                <Label className="text-xs font-sans" style={{ color: 'hsl(30,5%,55%)' }}>Sample Data</Label>
-                <Switch
-                  checked={sampleData}
-                  onCheckedChange={setSampleData}
-                  className="data-[state=checked]:bg-[hsl(40,30%,45%)]"
-                />
-              </div>
-            </div>
-          </header>
-
-          {/* Content */}
-          <main className="max-w-lg mx-auto px-4 pt-5 pb-24">
-            {activeTab === 'dashboard' && <DashboardTab />}
-            {activeTab === 'log' && <LogExpenseTab />}
-            {activeTab === 'budgets' && <BudgetsTab />}
-            {activeTab === 'reports' && <ReportsTab />}
-          </main>
-
-          {/* Floating Add Button */}
-          {activeTab === 'dashboard' && (
-            <button
-              className="fixed z-40 flex items-center justify-center w-12 h-12 shadow-lg transition-transform hover:scale-105"
-              style={{
-                bottom: '80px',
-                right: '20px',
-                background: 'hsl(40,30%,45%)',
-                color: 'white',
-              }}
-              onClick={() => setActiveTab('log')}
-              aria-label="Add expense"
-            >
-              <FiPlus size={22} />
-            </button>
-          )}
-
-          {/* Bottom Navigation */}
-          <nav className="fixed bottom-0 left-0 right-0 z-50 border-t" style={{ borderColor: 'hsl(30,10%,88%)', background: 'white' }}>
-            <div className="max-w-lg mx-auto flex">
-              {([
-                { key: 'dashboard' as const, icon: <FiGrid size={18} />, label: 'Dashboard' },
-                { key: 'log' as const, icon: <FiPlus size={18} />, label: 'Log' },
-                { key: 'budgets' as const, icon: <FiTarget size={18} />, label: 'Budgets' },
-                { key: 'reports' as const, icon: <FiBarChart2 size={18} />, label: 'Reports' },
-              ]).map((tab) => (
-                <button
-                  key={tab.key}
-                  className="flex-1 flex flex-col items-center py-2.5 transition-colors"
-                  style={{
-                    color: activeTab === tab.key ? 'hsl(40,30%,45%)' : 'hsl(30,5%,60%)',
-                    borderTop: activeTab === tab.key ? '2px solid hsl(40,30%,45%)' : '2px solid transparent',
-                  }}
-                  onClick={() => setActiveTab(tab.key)}
-                >
-                  {tab.icon}
-                  <span className="text-xs font-sans tracking-wider mt-1">{tab.label}</span>
-                </button>
-              ))}
-            </div>
-          </nav>
-        </div>
+        {/* Bottom Navigation */}
+        <nav className="fixed bottom-0 left-0 right-0 z-50 border-t" style={{ borderColor: 'hsl(30,10%,88%)', background: 'white' }}>
+          <div className="max-w-lg mx-auto flex">
+            {([
+              { key: 'dashboard' as const, icon: <FiGrid size={18} />, label: 'Dashboard' },
+              { key: 'log' as const, icon: <FiPlus size={18} />, label: 'Log' },
+              { key: 'budgets' as const, icon: <FiTarget size={18} />, label: 'Budgets' },
+              { key: 'reports' as const, icon: <FiBarChart2 size={18} />, label: 'Reports' },
+            ]).map((tab) => (
+              <button
+                key={tab.key}
+                className="flex-1 flex flex-col items-center py-2.5 transition-colors"
+                style={{
+                  color: activeTab === tab.key ? 'hsl(40,30%,45%)' : 'hsl(30,5%,60%)',
+                  borderTop: activeTab === tab.key ? '2px solid hsl(40,30%,45%)' : '2px solid transparent',
+                }}
+                onClick={() => setActiveTab(tab.key)}
+              >
+                {tab.icon}
+                <span className="text-xs font-sans tracking-wider mt-1">{tab.label}</span>
+              </button>
+            ))}
+          </div>
+        </nav>
       </div>
     </ErrorBoundary>
   )
