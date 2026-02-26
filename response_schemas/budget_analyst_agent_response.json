@@ -1,0 +1,70 @@
+{
+  "agent_name": "Budget Analyst Agent",
+  "agent_id": "699fd39de1d115fae61853ad",
+  "description": "Analyzes all logged expenses against user-defined monthly budgets. Identifies categories where spending exceeds limits, calculates budget-vs-actual gaps, ranks overspending areas, and generates actionable cost-cutting recommendations with a monthly spending report.",
+  "agent_type": "json",
+  "accessor": "result",
+  "auto_generated": true,
+  "response_schema": {
+    "total_spent": "number",
+    "total_budget": "number",
+    "budget_utilization_percent": "number",
+    "category_breakdown": [
+      {
+        "category": "string",
+        "spent": "number",
+        "budget": "number",
+        "gap": "number",
+        "utilization_percent": "number",
+        "status": "string"
+      }
+    ],
+    "overspending_areas": [
+      {
+        "category": "string",
+        "overspend_amount": "number",
+        "severity": "string"
+      }
+    ],
+    "recommendations": [
+      {
+        "title": "string",
+        "description": "string",
+        "potential_savings": "string",
+        "priority": "string"
+      }
+    ],
+    "monthly_summary": "string"
+  },
+  "example_response": {
+    "total_spent": 0,
+    "total_budget": 0,
+    "budget_utilization_percent": 0,
+    "category_breakdown": [
+      {
+        "category": "Category name",
+        "spent": 0,
+        "budget": 0,
+        "gap": 0,
+        "utilization_percent": 0,
+        "status": "under, near, or over budget"
+      }
+    ],
+    "overspending_areas": [
+      {
+        "category": "Overspent category name",
+        "overspend_amount": 0,
+        "severity": "high, medium, or low"
+      }
+    ],
+    "recommendations": [
+      {
+        "title": "Short recommendation title",
+        "description": "Detailed actionable recommendation",
+        "potential_savings": "Estimated savings if followed",
+        "priority": "high, medium, or low priority"
+      }
+    ],
+    "monthly_summary": "Brief narrative monthly spending summary with key highlights"
+  }
+}

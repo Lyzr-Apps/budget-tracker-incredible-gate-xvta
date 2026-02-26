@@ -1,0 +1,48 @@
+{
+  "nodes": [
+    {
+      "id": "input_node",
+      "type": "Input",
+      "label": "User Input",
+      "nodeCategory": "input"
+    },
+    {
+      "id": "expense_logger_agent",
+      "type": "Agent",
+      "label": "Expense Logger Agent",
+      "nodeCategory": "agent",
+      "agent_id": "699fd39d4151f92a8b61c6a0"
+    },
+    {
+      "id": "budget_analyst_agent",
+      "type": "Agent",
+      "label": "Budget Analyst Agent",
+      "nodeCategory": "agent",
+      "agent_id": "699fd39de1d115fae61853ad"
+    },
+    {
+      "id": "output_node",
+      "type": "Output",
+      "label": "Agent Response",
+      "nodeCategory": "end"
+    }
+  ],
+  "edges": [
+    {
+      "source": "input_node",
+      "target": "expense_logger_agent"
+    },
+    {
+      "source": "input_node",
+      "target": "budget_analyst_agent"
+    },
+    {
+      "source": "expense_logger_agent",
+      "target": "output_node"
+    },
+    {
+      "source": "budget_analyst_agent",
+      "target": "output_node"
+    }
+  ]
+}

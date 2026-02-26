@@ -1,0 +1,24 @@
+{
+  "agent_name": "Expense Logger Agent",
+  "agent_id": "699fd39d4151f92a8b61c6a0",
+  "description": "Accepts natural language expense entries from the user, extracts amount, category, date, and notes. Categorizes expenses automatically (Food, Transport, Shopping, Bills, Entertainment, Health, etc.) and returns structured expense data for storage.",
+  "agent_type": "json",
+  "accessor": "result",
+  "auto_generated": true,
+  "response_schema": {
+    "amount": "number",
+    "currency": "string",
+    "category": "string",
+    "date": "string",
+    "notes": "string",
+    "confidence": "string"
+  },
+  "example_response": {
+    "amount": 0,
+    "currency": "Currency symbol or code (e.g., \u20b9, $, USD)",
+    "category": "Expense category: Food, Transport, Shopping, Bills, Entertainment, Health, Education, Travel, Subscriptions, or Other",
+    "date": "Date in YYYY-MM-DD format",
+    "notes": "Additional notes or description of the expense",
+    "confidence": "How confident the agent is in the parsing: high, medium, low"
+  }
+}

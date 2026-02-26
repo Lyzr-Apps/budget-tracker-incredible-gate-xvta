@@ -1,0 +1,38 @@
+{
+  "agents": {
+    "expense_logger_agent": {
+      "agent_id": "699fd39d4151f92a8b61c6a0",
+      "name": "Expense Logger Agent",
+      "type": "text",
+      "model": "gpt-4.1",
+      "provider": "openai",
+      "temperature": 0.2,
+      "top_p": 1,
+      "has_tools": false,
+      "has_voice": false,
+      "has_image_output": false,
+      "has_file_output": false,
+      "has_knowledge_base": false,
+      "has_schedule": false,
+      "response_schema_file": "response_schemas/expense_logger_agent_response.json"
+    },
+    "budget_analyst_agent": {
+      "agent_id": "699fd39de1d115fae61853ad",
+      "name": "Budget Analyst Agent",
+      "type": "text",
+      "model": "gpt-4.1",
+      "provider": "openai",
+      "temperature": 0.4,
+      "top_p": 1,
+      "has_tools": false,
+      "has_voice": false,
+      "has_image_output": false,
+      "has_file_output": false,
+      "has_knowledge_base": false,
+      "has_schedule": false,
+      "response_schema_file": "response_schemas/budget_analyst_agent_response.json"
+    }
+  },
+  "workflow_created": true,
+  "total_agents": 2
+}
